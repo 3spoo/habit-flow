@@ -46,9 +46,10 @@ class MainActivity:ComponentActivity(){
         super.onCreate(savedInstanceState)
         setContent{ HabitFlowAppUI(application as HabitFlowApp) }
     }
+}
 
-    @Composable
-    fun RoutineScreen(app:HabitFlowApp){
+@Composable
+fun RoutineScreen(app:HabitFlowApp){
         val routines by app.database.routines().observe().collectAsState(emptyList())
         val scope=rememberCoroutineScope()
         var add by remember{mutableStateOf(false)}
@@ -226,7 +227,7 @@ class MainActivity:ComponentActivity(){
                 app.database.tracking().insert(TrackingActivity(name=name,target=target,
                     frequencyType=frequency,colorIndex=color,categoryId=filterCategory?.id))
                 add=false
-            }){Text("Salva")}},
+            }}){Text("Salva")}},
             dismissButton={TextButton(onClick={add=false}){Text("Annulla")}})
     }
 
@@ -329,15 +330,41 @@ class MainActivity:ComponentActivity(){
                 Spacer(Modifier.height(12.dp))
                 Card(shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()){
                     Column(Modifier.padding(12.dp)){
-                        Row(verticalAlignment=Alignment.CenterVertically){
-                            Text("Tema scuro",modifier=Modifier.weight(1f))
-                            Switch(checked=dark,onCheckedChange={scope.launch{app.preferences.setDarkTheme(it)}})
+                        Text("Tema",style=MaterialTheme.typography.labelLarge)
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            Modifier.fillMaxWidth().background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.55f),
+                                RoundedCornerShape(14.dp)
+                            ).padding(4.dp),
+                            horizontalArrangement=Arrangement.spacedBy(4.dp)
+                        ){
+                            listOf(false,true).forEach{darkOption->
+                                val selected=dark==darkOption
+                                val label=if(darkOption)"Scuro" else "Chiaro"
+                                Surface(
+                                    onClick={scope.launch{app.preferences.setDarkTheme(darkOption)}},
+                                    modifier=Modifier.weight(1f).height(48.dp),
+                                    shape=RoundedCornerShape(11.dp),
+                                    color=if(selected)PASTELS[0].copy(alpha=.75f)else Color.Transparent
+                                ){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
+                                    Text(label,fontWeight=if(selected)FontWeight.Bold else FontWeight.Normal)
+                                }}
+                            }
                         }
-                        Row(verticalAlignment=Alignment.CenterVertically){
-                            Text("Tema chiaro",modifier=Modifier.weight(1f))
-                            Switch(checked=!dark,onCheckedChange={scope.launch{app.preferences.setDarkTheme(!it)}})
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment=Alignment.CenterVertically
+                        ){
+                            Text("Modalità studente",modifier=Modifier.weight(1f))
+                            Switch(
+                                checked=student,
+                                onCheckedChange={
+                                    scope.launch{app.preferences.setStudentMode(it)}
+                                }
+                            )
                         }
-                        Text("Modalità studente: ${if(student)"Attiva" else "Disattiva"}")
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -465,7 +492,6 @@ class MainActivity:ComponentActivity(){
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitFlowAppUI(app:HabitFlowApp){
@@ -498,6 +524,32 @@ fun HabitFlowAppUI(app:HabitFlowApp){
                 NavigationDrawerItem(label={Text("Impostazioni")},selected=false,onClick={
                     tab=6; scope.launch{drawerState.close()}
                 })
+                Text("Tema",modifier=Modifier.padding(16.dp,12.dp,16.dp,6.dp),
+                    style=MaterialTheme.typography.labelLarge)
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal=16.dp).background(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.55f),
+                        RoundedCornerShape(16.dp)
+                    ).padding(4.dp),
+                    horizontalArrangement=Arrangement.spacedBy(4.dp)
+                ){
+                    listOf(false,true).forEach{darkOption->
+                        val selected=dark==darkOption
+                        Surface(
+                            onClick={scope.launch{app.preferences.setDarkTheme(darkOption)}},
+                            modifier=Modifier.weight(1f).height(48.dp),
+                            shape=RoundedCornerShape(12.dp),
+                            color=if(selected)PASTELS[palette].copy(alpha=.75f)else Color.Transparent
+                        ){
+                            Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
+                                Text(
+                                    if(darkOption)"Scuro" else "Chiaro",
+                                    fontWeight=if(selected)FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+                }
                 Text("Categorie",modifier=Modifier.padding(16.dp,12.dp,16.dp,6.dp),
                     style=MaterialTheme.typography.labelLarge)
                 categories.forEach{category->
