@@ -1,13 +1,11 @@
 package com.example.habitflow
 
 import android.Manifest
-import android.app.Activity
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -31,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.habitflow.alarm.AlarmManagerHelper
 import com.example.habitflow.data.*
 import com.example.habitflow.ui.PASTELS
@@ -150,7 +147,6 @@ fun RoutineScreen(app:HabitFlowApp){
     @Composable
     fun TrackingScreen(app:HabitFlowApp,filterCategory:Category?){
         val activities by app.database.tracking().observe().collectAsState(emptyList())
-        val categories by app.database.categories().observe().collectAsState(emptyList())
         val scope=rememberCoroutineScope()
         var add by remember{mutableStateOf(false)}
         var name by remember{mutableStateOf("")}
@@ -423,7 +419,6 @@ fun RoutineScreen(app:HabitFlowApp){
 
     @Composable
     fun CreateSheet(app:HabitFlowApp,onRoutine:()->Unit,onTracking:()->Unit){
-        val context=LocalContext.current
         var sheet by remember{mutableStateOf(true)}
         if(sheet) AlertDialog(onDismissRequest={sheet=false},title={Text("Aggiungi")},
             text={Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
@@ -491,7 +486,6 @@ fun RoutineScreen(app:HabitFlowApp){
             }
         }
     }
-}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitFlowAppUI(app:HabitFlowApp){
