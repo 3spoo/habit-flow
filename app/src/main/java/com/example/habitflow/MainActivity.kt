@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -47,68 +48,100 @@ class MainActivity:ComponentActivity(){
 
 @Composable
 fun RoutineScreen(app:HabitFlowApp){
-        val routines by app.database.routines().observe().collectAsState(emptyList())
-        val scope=rememberCoroutineScope()
-        var add by remember{mutableStateOf(false)}
-        var name by remember{mutableStateOf("")}
-        var hour by remember{mutableIntStateOf(8)}
-        var minute by remember{mutableIntStateOf(0)}
-        var color by remember{mutableIntStateOf(0)}
-        var selectedDays by remember{mutableStateOf(setOf(0,1,2,3,4,5,6))}
-        val context=LocalContext.current
-        Column(Modifier.fillMaxSize().padding(12.dp)){
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                Text("Routine",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f))
-                FilledTonalButton(onClick={add=true}){Icon(Icons.Default.Add,null);Text("Nuova")}
+    val routines by app.database.routines().observe().collectAsState(emptyList())
+    val scope=rememberCoroutineScope()
+    var add by remember{mutableStateOf(false)}
+    var name by remember{mutableStateOf("")}
+    var hour by remember{mutableIntStateOf(8)}
+    var minute by remember{mutableIntStateOf(0)}
+    var color by remember{mutableIntStateOf(0)}
+    var selectedDays by remember{mutableStateOf(setOf(0,1,2,3,4,5,6))}
+    val context=LocalContext.current
+
+    Column(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding=PaddingValues(start=28.dp,end=28.dp,bottom=24.dp)
+        ) {
+            item{
+                Spacer(Modifier.height(18.dp))
+                Text("Routine",Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center,
+                    style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.ExtraBold)
+                Spacer(Modifier.height(22.dp))
             }
-            LazyColumn{
-                items(routines){routine->
-                    var expanded by remember{mutableStateOf(false)}
-                    Card(Modifier.fillMaxWidth().padding(vertical=5.dp),
-                        shape=RoundedCornerShape(16.dp),
-                        border=BorderStroke(1.dp,MaterialTheme.colorScheme.outline)){
-                        Column(Modifier.clickable{expanded=!expanded}.padding(12.dp)){
-                            Box(Modifier.fillMaxWidth().background(PASTELS[routine.colorIndex].copy(alpha=.55f),RoundedCornerShape(12.dp)).padding(10.dp),
-                                contentAlignment=Alignment.Center){Text(routine.name,fontWeight=FontWeight.Bold)}
-                            Spacer(Modifier.height(8.dp))
-                            if(expanded){
-                                val actions by app.database.actions().observe(routine.id).collectAsState(emptyList())
-                                var actionTitle by remember{mutableStateOf("")}
-                                Row(verticalAlignment=Alignment.CenterVertically){
-                                    OutlinedTextField(actionTitle,{actionTitle=it},label={Text("Subazione")},modifier=Modifier.weight(1f),
-                                        shape=RoundedCornerShape(10.dp))
-                                    IconButton(onClick={scope.launch{
-                                        app.database.actions().insert(RoutineAction(routineId=routine.id,title=actionTitle,
-                                            position=actions.size)); actionTitle=""
-                                    }}){Icon(Icons.Default.Add,null)}
-                                }
-                                actions.forEachIndexed{index,action->
-                                    Row(Modifier.padding(vertical=5.dp),verticalAlignment=Alignment.CenterVertically){
-                                        OutlinedButton(onClick={scope.launch{
-                                            app.database.actions().update(action.copy(completedDate=if(action.completedDate==null)
-                                                LocalDate.now().toString() else null))
-                                        }},shape=RoundedCornerShape(10.dp),
-                                            colors=ButtonDefaults.outlinedButtonColors(containerColor=
-                                                if(action.completedDate!=null)PASTELS[routine.colorIndex]else Color.Transparent)){
-                                            Text("${index+1}")
-                                        }
-                                        Spacer(Modifier.width(10.dp));Text(action.title)
+            items(routines){routine->
+                var expanded by remember(routine.id){mutableStateOf(false)}
+                val actions by app.database.actions().observe(routine.id).collectAsState(emptyList())
+
+                Card(
+                    Modifier.fillMaxWidth().padding(bottom=18.dp).clickable{expanded=!expanded},
+                    shape=RoundedCornerShape(24.dp),
+                    border=BorderStroke(1.dp,MaterialTheme.colorScheme.outline.copy(alpha=.15f)),
+                    colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)
+                ){
+                    Column{
+                        Box(
+                            Modifier.fillMaxWidth().height(62.dp)
+                                .background(PASTELS[routine.colorIndex].copy(alpha=.72f)),
+                            contentAlignment=Alignment.Center
+                        ){
+                            Text("${routine.name}  %02d:%02d  • ${actions.count{it.completedDate!=null}}/${actions.size}".format(routine.hour,routine.minute),
+                                style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.ExtraBold)
+                        }
+                        Column(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=12.dp)){
+                            actions.forEachIndexed{index,action->
+                                Row(
+                                    Modifier.fillMaxWidth().padding(vertical=5.dp),
+                                    verticalAlignment=Alignment.CenterVertically
+                                ){
+                                    Box(Modifier.size(42.dp).background(
+                                        if(action.completedDate!=null)PASTELS[routine.colorIndex]
+                                        else MaterialTheme.colorScheme.surfaceVariant,
+                                        RoundedCornerShape(50)
+                                    ),contentAlignment=Alignment.Center){
+                                        Text("${index+1}",fontWeight=FontWeight.Bold)
                                     }
+                                    Spacer(Modifier.width(16.dp))
+                                    Text(action.title,
+                                        style=MaterialTheme.typography.titleMedium,
+                                        color=if(action.completedDate!=null)
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha=.38f)
+                                        else MaterialTheme.colorScheme.onSurface,
+                                        textDecoration=if(action.completedDate!=null)
+                                            androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                        else null,
+                                        modifier=Modifier.weight(1f)
+                                    )
                                 }
-                            }else Text("%02d:%02d".format(routine.hour,routine.minute),
-                                modifier=Modifier.padding(top=4.dp),style=MaterialTheme.typography.bodySmall)
-                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End){
-                                TextButton(onClick={scope.launch{
-                                    AlarmManagerHelper.cancel(context,routine.id)
-                                    app.database.routines().delete(routine)
-                                }}){Text("Elimina")}
+                            }
+                            if(expanded){
+                                var actionTitle by remember(routine.id){mutableStateOf("")}
+                                Row(verticalAlignment=Alignment.CenterVertically){
+                                    OutlinedTextField(actionTitle,{actionTitle=it},label={Text("Subazione")},
+                                        modifier=Modifier.weight(1f),shape=RoundedCornerShape(12.dp))
+                                    IconButton(onClick={
+                                        if(actionTitle.isNotBlank())scope.launch{
+                                            app.database.actions().insert(RoutineAction(routineId=routine.id,
+                                                title=actionTitle,position=actions.size))
+                                            actionTitle=""
+                                        }
+                                    }){Icon(Icons.Default.Add,null)}
+                                }
+                                TextButton(onClick={
+                                    scope.launch{
+                                        AlarmManagerHelper.cancel(context,routine.id)
+                                        app.database.routines().delete(routine)
+                                    }
+                                }){Text("Elimina")}
                             }
                         }
                     }
                 }
             }
         }
-        if(add) AlertDialog(onDismissRequest={add=false},title={Text("Nuova routine")},
+    }
+
+    if(add) AlertDialog(onDismissRequest={add=false},title={Text("Nuova routine")},
             text={
                 Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
                     OutlinedTextField(name,{name=it},label={Text("Nome")})
@@ -154,51 +187,96 @@ fun RoutineScreen(app:HabitFlowApp){
         var frequency by remember{mutableStateOf("DAILY")}
         var color by remember{mutableIntStateOf(0)}
         val month=YearMonth.now()
-        LazyColumn(Modifier.fillMaxSize().padding(12.dp)){
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding=PaddingValues(start=28.dp,end=28.dp,bottom=24.dp)
+        ){
             item{
-                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                    Text(if(filterCategory==null)"Tracking" else filterCategory.name,
-                        style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f))
-                    FilledTonalButton(onClick={add=true}){Icon(Icons.Default.Add,null);Text("Attività")}
-                }
+                Spacer(Modifier.height(18.dp))
+                Text(if(filterCategory==null)"Tracking" else filterCategory.name,
+                    Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center,
+                    style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.ExtraBold)
+                Spacer(Modifier.height(24.dp))
             }
             items(activities.filter{filterCategory==null||it.categoryId==filterCategory.id}){activity->
                 var entries by remember{mutableStateOf<List<TrackingEntry>>(emptyList())}
                 LaunchedEffect(activity.id){app.database.tracking().entries(activity.id).collect{entries=it}}
-                Card(Modifier.fillMaxWidth().padding(vertical=6.dp),shape=RoundedCornerShape(16.dp),
-                    border=BorderStroke(1.dp,MaterialTheme.colorScheme.outline)){
-                    Row(Modifier.padding(12.dp),verticalAlignment=Alignment.Top){
-                        Box(Modifier.size(46.dp).background(PASTELS[activity.colorIndex],RoundedCornerShape(10.dp)),
-                            contentAlignment=Alignment.Center){Icon(Icons.Default.Check,null)}
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)){
-                            Row(verticalAlignment=Alignment.CenterVertically){
-                                Text(activity.name,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
-                                TextButton(onClick={scope.launch{app.database.tracking().delete(activity)}}){Text("Elimina")}
+                val entryCounts=entries.associate{it.date to it.count}
+                val currentCount=entryCounts[LocalDate.now().toString()]?:0
+                val description=when(activity.frequencyType){
+                    "WEEKLY"->"volte a settimana"
+                    "MONTHLY"->"volte al mese"
+                    "TIMED"->"minuti"
+                    else->"questa settimana"
+                }
+
+                Row(Modifier.fillMaxWidth().padding(bottom=18.dp),verticalAlignment=Alignment.Top){
+                    Box(Modifier.padding(top=28.dp).size(82.dp).background(
+                        PASTELS[activity.colorIndex].copy(alpha=.50f),RoundedCornerShape(22.dp)
+                    ),contentAlignment=Alignment.Center){
+                        Icon(if(activity.name.contains("Bevi"))Icons.Default.LocalDrink else
+                            if(activity.name.contains("Legge"))Icons.Default.MenuBook else Icons.Default.Check,
+                            null,Modifier.size(34.dp),tint=PASTELS[(activity.colorIndex+1)%PASTELS.size])
+                    }
+                    Spacer(Modifier.width(18.dp))
+                    Column(Modifier.weight(1f)){
+                        Row(verticalAlignment=Alignment.CenterVertically){
+                            Text("${activity.name} · ${activity.target} $description",
+                                style=MaterialTheme.typography.titleMedium,
+                                color=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f),
+                                modifier=Modifier.weight(1f))
+                            Surface(
+                                shape=RoundedCornerShape(12.dp),
+                                color=PASTELS[6].copy(alpha=.35f),
+                                modifier=Modifier.size(38.dp)
+                            ){
+                                Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
+                                    Icon(Icons.Default.Pause,null,Modifier.size(22.dp),tint=Color(0xFFB87300))
+                                }
                             }
-                            val entryCounts=entries.associate{it.date to it.count}
-                            Column(verticalArrangement=Arrangement.spacedBy(4.dp)){
-                                (1..month.lengthOfMonth()).chunked(7).forEach{week->
-                                    Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){
+                        }
+                        Card(
+                            Modifier.fillMaxWidth().padding(top=8.dp),
+                            shape=RoundedCornerShape(24.dp),
+                            border=BorderStroke(2.dp,PASTELS[activity.colorIndex].copy(alpha=.95f)),
+                            colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)
+                        ){
+                            Column(Modifier.padding(10.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+                                (1..35).chunked(7).forEach{week->
+                                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                                         week.forEach{day->
-                                            val date=month.atDay(day).toString()
+                                            val date=if(day<=month.lengthOfMonth())month.atDay(day).toString() else ""
                                             val count=entryCounts[date]?:0
                                             val done=count>=activity.target
-                                            Box(Modifier.size(20.dp).background(
-                                                if(done)PASTELS[activity.colorIndex]else Color.Transparent,
-                                                RoundedCornerShape(5.dp)))
+                                            Box(Modifier.weight(1f).aspectRatio(1f).background(
+                                                if(done)PASTELS[activity.colorIndex]
+                                                else Color.Transparent,RoundedCornerShape(10.dp)
+                                            ).border(
+                                                width=2.dp,
+                                                color=if(done)PASTELS[activity.colorIndex].copy(alpha=.95f)
+                                                    else PASTELS[activity.colorIndex].copy(alpha=.75f),
+                                                shape=RoundedCornerShape(10.dp)
+                                            ),contentAlignment=Alignment.Center){
+                                                if(done)Icon(Icons.Default.Check,null,
+                                                    tint=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f))
+                                            }
                                         }
                                     }
                                 }
                             }
-                            Spacer(Modifier.height(8.dp))
-                            TextButton(onClick={scope.launch{
+                        }
+                        Text("${currentCount}/${activity.target}",
+                            Modifier.padding(top=8.dp),
+                            style=MaterialTheme.typography.titleMedium,
+                            color=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f))
+                        TextButton(onClick={
+                            scope.launch{
                                 val date=LocalDate.now().toString()
                                 val old=app.database.tracking().entry(activity.id,date)
                                 app.database.tracking().saveEntry(TrackingEntry(activityId=activity.id,date=date,
                                     count=(old?.count?:0)+1))
-                            }}){Text("+1")}
-                        }
+                            }
+                        }){Text("+1")}
                     }
                 }
             }
@@ -240,28 +318,76 @@ fun RoutineScreen(app:HabitFlowApp){
         LaunchedEffect(running,remaining){if(running&&remaining>0){
             kotlinx.coroutines.delay(1000); remaining--
         }else if(remaining==0)running=false}
-        LazyColumn(Modifier.fillMaxSize().padding(12.dp)){
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding=PaddingValues(start=28.dp,end=28.dp,bottom=24.dp)
+        ){
             item{
-                PermissionBanner(app)
-                Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)){
-                    Column(Modifier.padding(12.dp)){
-                        Text("Timer Pomodoro",fontWeight=FontWeight.Bold)
+                Spacer(Modifier.height(18.dp))
+                Text("Studente",Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center,
+                    style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.ExtraBold)
+                Spacer(Modifier.height(22.dp))
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape=RoundedCornerShape(24.dp),
+                    border=BorderStroke(1.dp,MaterialTheme.colorScheme.outline.copy(alpha=.18f)),
+                    colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)
+                ){
+                    Column(Modifier.fillMaxWidth().padding(22.dp),
+                        horizontalAlignment=Alignment.CenterHorizontally){
+                        Text("Studio · blocchi completati: ${exams.sumOf{it.cfu}/6}",
+                            style=MaterialTheme.typography.titleMedium,
+                            color=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f))
                         Text("%02d:%02d".format(remaining/60,remaining%60),
-                            style=MaterialTheme.typography.headlineMedium)
-                        Row{
-                            Button(onClick={running=!running}){Text(if(running)"Pausa" else "Avvia")}
-                            Spacer(Modifier.width(8.dp))
-                            OutlinedButton(onClick={running=false;remaining=studyMinutes*60}){Text("Reset")}
+                            Modifier.padding(vertical=8.dp),
+                            style=MaterialTheme.typography.displayMedium,fontWeight=FontWeight.ExtraBold)
+                        Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                            listOf(
+                                if(running)"Pausa" else "Avvia",
+                                "Salta fase",
+                                "Azzera"
+                            ).forEachIndexed{index,label->
+                                OutlinedButton(
+                                    onClick={
+                                        when(index){
+                                            0->running=!running
+                                            1->remaining=studyMinutes*60
+                                            else->{running=false;remaining=studyMinutes*60}
+                                        }
+                                    },
+                                    shape=RoundedCornerShape(14.dp),
+                                    modifier=Modifier.weight(1f)
+                                ){Text(label)}
+                            }
                         }
-                        OutlinedTextField(studyMinutes.toString(),{
-                            studyMinutes=it.toIntOrNull()?:25; if(!running)remaining=studyMinutes*60
-                        },label={Text("Minuti")})
+                        Spacer(Modifier.height(16.dp))
+                        OutlinedTextField(
+                            studyMinutes.toString(),
+                            {
+                                studyMinutes=it.toIntOrNull()?:25
+                                if(!running)remaining=studyMinutes*60
+                            },
+                            label={Text("Durata (minuti)")},
+                            modifier=Modifier.fillMaxWidth(),
+                            shape=RoundedCornerShape(14.dp)
+                        )
                     }
                 }
-                Row(Modifier.fillMaxWidth().padding(vertical=8.dp),
-                    verticalAlignment=Alignment.CenterVertically){
-                    Text("Esami",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f))
-                    FilledTonalButton(onClick={add=true}){Icon(Icons.Default.Add,null);Text("Esame")}
+                Spacer(Modifier.height(14.dp))
+                Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                    Card(Modifier.weight(1f),shape=RoundedCornerShape(20.dp)){
+                        Column(Modifier.padding(18.dp)){Text("CFU",color=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f));Text("${exams.sumOf{it.cfu}}",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)}
+                    }
+                    Card(Modifier.weight(1f),shape=RoundedCornerShape(20.dp)){
+                        Column(Modifier.padding(18.dp)){Text("Media",color=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f));Text("—",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)}
+                    }
+                    Card(Modifier.weight(1f),shape=RoundedCornerShape(20.dp)){
+                        Column(Modifier.padding(18.dp)){Text("Ponderata",color=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f));Text("—",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)}
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                    OutlinedButton(onClick={add=true},shape=RoundedCornerShape(14.dp)){Icon(Icons.Default.Add,null);Spacer(Modifier.width(6.dp));Text("Esame")}
                 }
             }
             items(exams){exam->
@@ -573,22 +699,52 @@ fun HabitFlowAppUI(app:HabitFlowApp){
                     dismissButton={TextButton(onClick={studentDialog=false}){Text("No")}})
             }
         }) {
-            Scaffold(topBar={TopAppBar(title={Text("Habit Flow")},
-                navigationIcon={IconButton(onClick={scope.launch{drawerState.open()}}){
-                    Icon(Icons.Default.Menu,"Menu")
-                }},
-                actions={
-                    if(tab==5) IconButton(onClick={scope.launch{app.preferences.setStudentMode(false)}}){
-                        Icon(Icons.Default.MoreVert,"Disattiva")
-                    }
-                })},
+            Scaffold(
+                containerColor=MaterialTheme.colorScheme.background,
+                topBar={
+                    TopAppBar(
+                        title={
+                            Text("Habit Flow",fontWeight=FontWeight.ExtraBold,
+                                style=MaterialTheme.typography.titleLarge)
+                        },
+                        navigationIcon={
+                            IconButton(onClick={scope.launch{drawerState.open()}}){
+                                Icon(Icons.Default.ArrowBack,"Indietro")
+                            }
+                        },
+                        actions={
+                            IconButton(onClick={}){Icon(Icons.Default.Chat,null)}
+                            IconButton(onClick={}){Icon(Icons.Default.Share,null)}
+                            IconButton(onClick={}){Icon(Icons.Default.MoreVert,"Altro")}
+                        },
+                        colors=TopAppBarDefaults.topAppBarColors(
+                            containerColor=MaterialTheme.colorScheme.background
+                        )
+                    )
+                },
                 bottomBar={
-                    NavigationBar{
-                        NavigationBarItem(selected=tab==0,onClick={tab=0},icon={Icon(Icons.Default.CalendarMonth,null)},label={Text("Giorno")})
-                        NavigationBarItem(selected=tab==1,onClick={tab=1},icon={Icon(Icons.Default.FormatListBulleted,null)},label={Text("Routine")})
-                        NavigationBarItem(selected=false,onClick={tab=9},icon={Icon(Icons.Default.Add,null)},label={Text("Aggiungi")})
-                        NavigationBarItem(selected=tab==2,onClick={tab=2},icon={Icon(Icons.Default.GridView,null)},label={Text("Tracking")})
-                        NavigationBarItem(selected=tab==3,onClick={tab=3},icon={Icon(Icons.Default.ShowChart,null)},label={Text("Statistiche")})
+                    NavigationBar(
+                        containerColor=MaterialTheme.colorScheme.surface,
+                        tonalElevation=0.dp
+                    ){
+                        NavigationBarItem(selected=tab==0,onClick={tab=0},
+                            icon={Icon(Icons.Default.CalendarMonth,null)},label=null)
+                        NavigationBarItem(selected=tab==1,onClick={tab=1},
+                            icon={Icon(Icons.Default.Menu,null)},label=null)
+                        NavigationBarItem(selected=tab==9,onClick={tab=9},
+                            icon={Surface(
+                                shape=RoundedCornerShape(22.dp),
+                                color=PASTELS[5].copy(alpha=.82f),
+                                modifier=Modifier.size(64.dp)
+                            ){
+                                Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
+                                    Icon(Icons.Default.Add,null,Modifier.size(30.dp))
+                                }
+                            }},label=null)
+                        NavigationBarItem(selected=tab==2,onClick={tab=2},
+                            icon={Icon(Icons.Default.GridView,null)},label=null)
+                        NavigationBarItem(selected=tab==3,onClick={tab=3},
+                            icon={Icon(Icons.Default.ShowChart,null)},label=null)
                     }
                 }){padding->
                 Surface(Modifier.padding(padding).fillMaxSize()){
